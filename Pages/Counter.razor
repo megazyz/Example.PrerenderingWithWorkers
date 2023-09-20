@@ -1,5 +1,6 @@
 ﻿@page "/counter"
 @using SpawnDev.BlazorJS.WebWorkers
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 
 <PageTitle>Counter</PageTitle>
 
@@ -9,16 +10,26 @@
 
 <button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
 
-@inject WebWorkerService WorkerService
+@inject IServiceProvider ServiceProvider
+@inject IWebAssemblyHostEnvironment HostEnvironment
 @code {
     private int currentCount = 0;
 
     private async void IncrementCount()
     {
-        //currentCount++;
-
-        using var webWorker = await WorkerService.GetWebWorker();
-        var myWorker = webWorker.GetService<IMyWorker>();
-        var result = await myWorker.Add(currentCount, 1);
+        if (HostEnvironment.Environment == "Prerendering")
+        {
+            // single thread in prerendering environment
+            var myWorker = ServiceProvider.GetService<IMyWorker>();
+            currentCount = await myWorker.Add(currentCount, 1);
+        }
+        else
+        {
+            // web worker
+            var workerService = ServiceProvider.GetService<WebWorkerService>();
+            using var webWorker = await workerService.GetWebWorker();
+            var myWorker = webWorker.GetService<IMyWorker>();
+            currentCount = await myWorker.Add(currentCount, 1);
+        }
     }
 }

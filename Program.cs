@@ -8,18 +8,25 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-ConfigureServices(builder.Services, builder.HostEnvironment.BaseAddress);
+InternalConfigureServices(builder.Services, builder.HostEnvironment.BaseAddress, false);
 
 // BlazorJS.WebWorkers
 await builder.Build().BlazorJSRunAsync();
 
-static void ConfigureServices(IServiceCollection services, string baseAddress)
+static void InternalConfigureServices(IServiceCollection services, string baseAddress, bool prerendering)
 {
     services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(baseAddress) });
 
-    // BlazorJS.WebWorkers
-    services.AddBlazorJSRuntime();
-    services.AddWebWorkerService();
+    if (!prerendering)
+    {
+        // BlazorJS.WebWorkers
+        services.AddBlazorJSRuntime();
+        services.AddWebWorkerService();
+        services.AddSingleton<IMyWorker, MyWorker>();
+    }
+}
 
-    services.AddSingleton<IMyWorker, MyWorker>();
+static void ConfigureServices(IServiceCollection services, string baseAddress)
+{
+    InternalConfigureServices(services, baseAddress, true);
 }
